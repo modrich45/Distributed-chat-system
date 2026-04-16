@@ -18,4 +18,6 @@ public class Message {
     public String content;
 
     public LocalDateTime timestamp;
+
+    public boolean delivered;
 }
