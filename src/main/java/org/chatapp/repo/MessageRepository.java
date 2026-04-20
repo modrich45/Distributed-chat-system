@@ -1,9 +1,9 @@
-package org.chatapp.message.repo;
+package org.chatapp.repo;
 
 
 import java.util.List;
 
-import org.chatapp.message.entity.Message;
+import org.chatapp.entity.Message;
 
 import io.quarkus.hibernate.orm.panache.PanacheRepository;
 import jakarta.enterprise.context.ApplicationScoped;

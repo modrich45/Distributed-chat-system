@@ -1,9 +1,9 @@
-package org.chatapp.message.controller;
+package org.chatapp.controller;
 
 import java.util.List;
 
-import org.chatapp.message.entity.Message;
-import org.chatapp.message.service.MessageService;
+import org.chatapp.entity.Message;
+import org.chatapp.service.MessageService;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;

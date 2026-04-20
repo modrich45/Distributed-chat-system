@@ -1,7 +1,7 @@
-package org.chatapp.user.controller;
+package org.chatapp.controller;
 
-import org.chatapp.user.entity.User;
-import org.chatapp.user.service.UserService;
+import org.chatapp.entity.User;
+import org.chatapp.service.UserService;
 
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;

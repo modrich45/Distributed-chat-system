@@ -1,6 +1,6 @@
-package org.chatapp.user.repo;
+package org.chatapp.repo;
 
-import org.chatapp.user.entity.User;
+import org.chatapp.entity.User;
 
 import io.quarkus.hibernate.orm.panache.PanacheRepository;
 import jakarta.enterprise.context.ApplicationScoped;

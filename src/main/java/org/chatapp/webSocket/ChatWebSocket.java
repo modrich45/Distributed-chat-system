@@ -10,8 +10,10 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.chatapp.message.entity.Message;
-import org.chatapp.message.service.MessageService;
+import org.chatapp.dto.ChatMessage;
+import org.chatapp.entity.Message;
+import org.chatapp.service.MessageService;
+import org.chatapp.util.Util;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -22,6 +24,9 @@ public class ChatWebSocket {
     @Inject
     MessageService messageService;
 
+    @Inject
+    Util util;
+
     private static Map<Long, Session> onlineUsers = new ConcurrentHashMap<>();
 
     @OnOpen
@@ -30,12 +35,12 @@ public class ChatWebSocket {
         System.out.println("User connected: " + userId);
 
         CompletableFuture.runAsync(() -> {
-            List<Message> undeliveredMessages = messageService.getUndeliveredMessages(userId);
-            onlineUsers.get(userId).getAsyncRemote()
-                    .sendText("You have " + undeliveredMessages.size() + " undelivered messages.");
+            List<ChatMessage> undeliveredMessages = messageService.getUndeliveredMessages(userId);
             undeliveredMessages.forEach(msg -> {
-                onlineUsers.get(userId).getAsyncRemote().sendText("From " + msg.senderId + ": " + msg.content);
+                util.sendMessage(session, "From " + msg.from + ": " + msg.content); 
             });
+            
+            util.sendMessage(session, "You have " + undeliveredMessages.size() + " undelivered messages.");
         });
     }
 
@@ -63,7 +68,7 @@ public class ChatWebSocket {
             Session receiverSession = onlineUsers.get(receiverId);
 
             if (receiverSession != null && receiverSession.isOpen()) {
-                receiverSession.getAsyncRemote().sendText("From" + senderId + ": " + text);
+                util.sendMessage(receiverSession, "From " + senderId + ": " + text);
             } else {
                 System.out.println("User " + receiverId + " is not online.");
             }

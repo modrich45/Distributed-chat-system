@@ -1,7 +1,7 @@
-package org.chatapp.user.service;
+package org.chatapp.service;
 
-import org.chatapp.user.entity.User;
-import org.chatapp.user.repo.UserRepository;
+import org.chatapp.entity.User;
+import org.chatapp.repo.UserRepository;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
