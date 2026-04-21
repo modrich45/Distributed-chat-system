@@ -13,7 +13,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.chatapp.dto.ChatMessage;
 import org.chatapp.entity.Message;
 import org.chatapp.service.MessageService;
+import org.chatapp.service.RedisService;
 import org.chatapp.util.Util;
+import org.jboss.logging.Logger;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -21,18 +23,24 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 @ServerEndpoint("/chat/{userId}")
 public class ChatWebSocket {
 
+    private static final Logger LOG = Logger.getLogger(ChatWebSocket.class);
+
     @Inject
     MessageService messageService;
 
     @Inject
     Util util;
 
+    @Inject 
+    RedisService redisService;
+
     private static Map<Long, Session> onlineUsers = new ConcurrentHashMap<>();
 
     @OnOpen
     public void onOpen(Session session, @PathParam("userId") Long userId) {
         onlineUsers.put(userId, session);
-        System.out.println("User connected: " + userId);
+        redisService.setUserOnline(userId);
+        LOG.info("User connected: " + userId);
 
         CompletableFuture.runAsync(() -> {
             List<ChatMessage> undeliveredMessages = messageService.getUndeliveredMessages(userId);
@@ -47,14 +55,15 @@ public class ChatWebSocket {
     @OnClose
     public void onClose(@PathParam("userId") Long userId) {
         onlineUsers.remove(userId);
-        System.out.println("User disconnected: " + userId);
+        redisService.setUserOffline(userId);
+        LOG.info("User disconnected: " + userId);
     }
 
     @OnMessage
     public void onMessage(String message,
             @PathParam("userId") Long senderId) {
 
-        System.out.println("Received message from user " + senderId + ": " + message);
+        LOG.info("Received message from user " + senderId + ": " + message);
 
         try {
             ObjectMapper objectMapper = new ObjectMapper();
@@ -67,14 +76,14 @@ public class ChatWebSocket {
 
             Session receiverSession = onlineUsers.get(receiverId);
 
-            if (receiverSession != null && receiverSession.isOpen()) {
+            if (receiverSession != null && receiverSession.isOpen() && redisService.isUserOnline(receiverId).join()) {
                 util.sendMessage(receiverSession, "From " + senderId + ": " + text);
             } else {
-                System.out.println("User " + receiverId + " is not online.");
+                LOG.warn("User " + receiverId + " is not online.");
             }
 
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.error("Error occurred while processing message from user " + senderId, e);
         }
     }
 }
