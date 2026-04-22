@@ -5,12 +5,14 @@ import jakarta.websocket.*;
 import jakarta.websocket.server.PathParam;
 import jakarta.websocket.server.ServerEndpoint;
 
+import java.net.Socket;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.chatapp.dto.ChatMessage;
+import org.chatapp.dto.SocketResponse;
 import org.chatapp.entity.Message;
 import org.chatapp.service.MessageService;
 import org.chatapp.service.RedisService;
@@ -45,10 +47,16 @@ public class ChatWebSocket {
         CompletableFuture.runAsync(() -> {
             List<ChatMessage> undeliveredMessages = messageService.getUndeliveredMessages(userId);
             undeliveredMessages.forEach(msg -> {
-                util.sendMessage(session, "From " + msg.from + ": " + msg.content); 
+                SocketResponse response = new SocketResponse();
+                response.type = "CHAT";
+                response.from = msg.from;
+                response.to = msg.to;
+                response.content = msg.content;
+                response.timestamp = msg.timestamp;
+                Util.sendMessage(session, response); 
             });
             
-            util.sendMessage(session, "You have " + undeliveredMessages.size() + " undelivered messages.");
+            Util.sendMessage(session, "You have " + undeliveredMessages.size() + " undelivered messages.");
         });
     }
 
@@ -77,7 +85,12 @@ public class ChatWebSocket {
             Session receiverSession = onlineUsers.get(receiverId);
 
             if (receiverSession != null && receiverSession.isOpen() && redisService.isUserOnline(receiverId).join()) {
-                util.sendMessage(receiverSession, "From " + senderId + ": " + text);
+                SocketResponse response = new SocketResponse();
+                response.type = "CHAT";
+                response.from = senderId;
+                response.to = receiverId;
+                response.content = text;
+                Util.sendMessage(receiverSession, response);
             } else {
                 LOG.warn("User " + receiverId + " is not online.");
             }
