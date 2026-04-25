@@ -18,6 +18,7 @@ public class Util {
         if (session != null && session.isOpen()) {
             try {
                 String json = mapper.writeValueAsString(payload);
+                LOG.info("Sending message to user " + session.getId() + ": " + json);
                 session.getAsyncRemote().sendText(json);
             } catch (Exception e) {
                 LOG.error("Failed to send message: " + e.getMessage(), e);

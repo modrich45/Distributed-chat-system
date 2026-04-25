@@ -11,16 +11,19 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.apache.kafka.clients.producer.KafkaProducer;
 import org.chatapp.dto.ChatMessage;
 import org.chatapp.dto.SocketResponse;
-import org.chatapp.entity.Message;
+import org.chatapp.service.KafkaProducerService;
 import org.chatapp.service.MessageService;
 import org.chatapp.service.RedisService;
+import org.chatapp.util.SessionManager;
 import org.chatapp.util.Util;
 import org.jboss.logging.Logger;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
 @ServerEndpoint("/chat/{userId}")
 public class ChatWebSocket {
@@ -31,18 +34,26 @@ public class ChatWebSocket {
     MessageService messageService;
 
     @Inject
+    SessionManager sessionManager;
+
+    @Inject
     Util util;
 
-    @Inject 
+    @Inject
+    KafkaProducerService kafkaProducer;
+
+    @Inject
     RedisService redisService;
 
-    private static Map<Long, Session> onlineUsers = new ConcurrentHashMap<>();
+    public static Map<Long, Session> onlineUsers = new ConcurrentHashMap<>();
 
     @OnOpen
     public void onOpen(Session session, @PathParam("userId") Long userId) {
-        onlineUsers.put(userId, session);
+        sessionManager.addSession(userId, session);
         redisService.setUserOnline(userId);
         LOG.info("User connected: " + userId);
+
+        LOG.info("User connected: " + userId + " on port " + session.getRequestURI().getPort());
 
         CompletableFuture.runAsync(() -> {
             List<ChatMessage> undeliveredMessages = messageService.getUndeliveredMessages(userId);
@@ -53,16 +64,16 @@ public class ChatWebSocket {
                 response.to = msg.to;
                 response.content = msg.content;
                 response.timestamp = msg.timestamp;
-                Util.sendMessage(session, response); 
+                Util.sendMessage(session, response);
             });
-            
+
             Util.sendMessage(session, "You have " + undeliveredMessages.size() + " undelivered messages.");
         });
     }
 
     @OnClose
     public void onClose(@PathParam("userId") Long userId) {
-        onlineUsers.remove(userId);
+        sessionManager.removeSession(userId);
         redisService.setUserOffline(userId);
         LOG.info("User disconnected: " + userId);
     }
@@ -80,20 +91,18 @@ public class ChatWebSocket {
             Long receiverId = jsonNode.get("to").asLong();
             String text = jsonNode.get("message").asText();
 
-            CompletableFuture.runAsync(() -> messageService.saveMessage(senderId, receiverId, text, false));
+            CompletableFuture.runAsync(() -> {
+                messageService.saveMessage(senderId, receiverId, text, false);
+            });
+            LOG.info("Sending message to Kafka: " + message);
 
-            Session receiverSession = onlineUsers.get(receiverId);
+            ObjectNode payload = objectMapper.createObjectNode();
+            payload.put("from", senderId);
+            payload.put("to", receiverId);
+            payload.put("content", text);
+            payload.put("timestamp", System.currentTimeMillis());
 
-            if (receiverSession != null && receiverSession.isOpen() && redisService.isUserOnline(receiverId).join()) {
-                SocketResponse response = new SocketResponse();
-                response.type = "CHAT";
-                response.from = senderId;
-                response.to = receiverId;
-                response.content = text;
-                Util.sendMessage(receiverSession, response);
-            } else {
-                LOG.warn("User " + receiverId + " is not online.");
-            }
+            kafkaProducer.sendMessage(payload.toString());
 
         } catch (Exception e) {
             LOG.error("Error occurred while processing message from user " + senderId, e);
