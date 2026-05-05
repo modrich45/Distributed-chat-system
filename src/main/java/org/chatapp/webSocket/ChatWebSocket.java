@@ -5,13 +5,13 @@ import jakarta.websocket.*;
 import jakarta.websocket.server.PathParam;
 import jakarta.websocket.server.ServerEndpoint;
 
-import java.net.Socket;
+
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.apache.kafka.clients.producer.KafkaProducer;
+
 import org.chatapp.dto.ChatMessage;
 import org.chatapp.dto.SocketResponse;
 import org.chatapp.service.KafkaProducerService;

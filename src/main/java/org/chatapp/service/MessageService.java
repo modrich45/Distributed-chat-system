@@ -7,8 +7,6 @@ import org.chatapp.dto.ChatMessage;
 import org.chatapp.entity.Message;
 import org.chatapp.repo.MessageRepository;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;

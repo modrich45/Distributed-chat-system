@@ -2,6 +2,8 @@ package org.chatapp.service;
 
 import java.util.concurrent.CompletableFuture;
 
+import org.eclipse.microprofile.config.inject.ConfigProperty;
+
 import io.quarkus.redis.datasource.RedisDataSource;
 import io.quarkus.redis.datasource.keys.KeyCommands;
 import io.quarkus.redis.datasource.value.ValueCommands;
@@ -9,6 +11,9 @@ import jakarta.enterprise.context.ApplicationScoped;
 
 @ApplicationScoped
 public class RedisService {
+
+    @ConfigProperty(name = "server.id")
+    String serverId;
 
     private final ValueCommands<String, String> commands;
     private final KeyCommands<String> keyCommands;
@@ -20,7 +25,7 @@ public class RedisService {
 
     public void setUserOnline(Long userId) {
         CompletableFuture.runAsync(() -> {
-            commands.setex("user:" + userId, 3600, "ONLINE");
+            commands.setex("user:" + userId, 3600,serverId);
         });
     }
 
@@ -34,6 +39,12 @@ public class RedisService {
         return CompletableFuture.supplyAsync(() -> {
             String status = commands.get("user:" + userId);
             return "ONLINE".equals(status);
+        });
+    }
+
+    public CompletableFuture<String> getUserServer(Long userId) {
+        return CompletableFuture.supplyAsync(() -> {
+            return commands.get("user:" + userId);
         });
     }
 }

@@ -3,7 +3,7 @@ package org.chatapp.service;
 import org.chatapp.dto.SocketResponse;
 import org.chatapp.util.SessionManager;
 import org.chatapp.util.Util;
-import org.chatapp.webSocket.ChatWebSocket;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.reactive.messaging.Incoming;
 import org.jboss.logging.Logger;
 
@@ -15,6 +15,12 @@ import jakarta.websocket.Session;
 
 @ApplicationScoped
 public class KafkaConsumerService {
+
+    @Inject
+    RedisService redisService;
+
+    @ConfigProperty(name = "server.id")
+    String serverId;
 
     private static final Logger LOG = Logger.getLogger(KafkaConsumerService.class);
 
@@ -31,6 +37,17 @@ public class KafkaConsumerService {
             var json = mapper.readTree(message);
 
             Long receiverId = json.get("to").asLong();
+
+            String targetServer = redisService.getUserServer(receiverId).join();
+            if (targetServer == null) {
+                LOG.warn("User " + receiverId + " is offline. Message will be stored for later delivery.");
+                return;
+            }
+
+            if(!serverId.equals(targetServer)) {
+                LOG.info("Message for user " + receiverId + " is on server " + targetServer + ". Ignoring.");
+                return;
+            }
 
             Session session = sessionManager.getSession(receiverId);
 
