@@ -12,10 +12,12 @@ public class Message {
     @GeneratedValue
     private Long id;
 
+    private String messageId;
+
     private Long senderId;
     private Long receiverId;
 
-    private  String content;
+    private String content;
 
     private LocalDateTime timestamp;
 
@@ -39,7 +41,7 @@ public class Message {
 
     public void setReceiverId(Long receiverId) {
         this.receiverId = receiverId;
-    }   
+    }
 
     public String getContent() {
         return content;
@@ -63,5 +65,13 @@ public class Message {
 
     public void setDelivered(boolean delivered) {
         this.delivered = delivered;
+    }
+
+    public String getMessageId() {
+        return messageId;
+    }
+
+    public void setMessageId(String messageId) {
+        this.messageId = messageId;
     }
 }

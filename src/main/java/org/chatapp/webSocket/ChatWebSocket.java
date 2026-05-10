@@ -5,12 +5,10 @@ import jakarta.websocket.*;
 import jakarta.websocket.server.PathParam;
 import jakarta.websocket.server.ServerEndpoint;
 
-
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-
 
 import org.chatapp.dto.ChatMessage;
 import org.chatapp.dto.SocketResponse;
@@ -19,13 +17,17 @@ import org.chatapp.service.MessageService;
 import org.chatapp.service.RedisService;
 import org.chatapp.util.SessionManager;
 import org.chatapp.util.Util;
+import org.eclipse.microprofile.context.ManagedExecutor;
 import org.jboss.logging.Logger;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import jakarta.enterprise.context.ApplicationScoped;
+
 @ServerEndpoint("/chat/{userId}")
+@ApplicationScoped
 public class ChatWebSocket {
 
     private static final Logger LOG = Logger.getLogger(ChatWebSocket.class);
@@ -45,6 +47,9 @@ public class ChatWebSocket {
     @Inject
     RedisService redisService;
 
+    @Inject
+    ManagedExecutor managedExecutor;
+
     public static Map<Long, Session> onlineUsers = new ConcurrentHashMap<>();
 
     @OnOpen
@@ -55,10 +60,11 @@ public class ChatWebSocket {
 
         LOG.info("User connected: " + userId + " on port " + session.getRequestURI().getPort());
 
-        CompletableFuture.runAsync(() -> {
+        managedExecutor.runAsync(() -> {
             List<ChatMessage> undeliveredMessages = messageService.getUndeliveredMessages(userId);
             undeliveredMessages.forEach(msg -> {
                 SocketResponse response = new SocketResponse();
+                response.messageId = msg.messageId;
                 response.type = "CHAT";
                 response.from = msg.from;
                 response.to = msg.to;
@@ -88,22 +94,58 @@ public class ChatWebSocket {
             ObjectMapper objectMapper = new ObjectMapper();
             JsonNode jsonNode = objectMapper.readTree(message);
 
-            Long receiverId = jsonNode.get("to").asLong();
-            String text = jsonNode.get("message").asText();
+            String type = jsonNode.path("type").asText("CHAT");
 
-            CompletableFuture.runAsync(() -> {
-                messageService.saveMessage(senderId, receiverId, text, false);
-            });
-            LOG.info("Sending message to Kafka: " + message);
+            if ("ACK".equals(type)) {
 
-            ObjectNode payload = objectMapper.createObjectNode();
-            payload.put("from", senderId);
-            payload.put("to", receiverId);
-            payload.put("content", text);
-            payload.put("timestamp", System.currentTimeMillis());
+                if (!jsonNode.hasNonNull("messageId")) {
+                    LOG.warn("ACK received without messageId: " + message);
+                    return;
+                }
 
-            kafkaProducer.sendMessage(payload.toString());
+                String messageId = jsonNode.get("messageId").asText().trim();
+                if (messageId.isEmpty()) {
+                    LOG.warn("ACK received with empty messageId: " + message);
+                    return;
+                }
+                managedExecutor.runAsync(() -> {
+                    messageService.markAsDelivered(messageId);
+                }).exceptionally(ex -> {
+                    LOG.error("Failed to process ACK for messageId: " + messageId, ex);
+                    return null;
+                });
 
+                LOG.info("ACK received for messageId: " + messageId);
+
+                return;
+            }
+            if ("CHAT".equals(type)) {
+                if (!jsonNode.hasNonNull("to") || !jsonNode.hasNonNull("message")) {
+                    LOG.warn("CHAT missing to/message: " + message);
+                    return;
+                }
+                String messageId = UUID.randomUUID().toString();
+                Long receiverId = jsonNode.get("to").asLong();
+                String text = jsonNode.get("message").asText();
+                managedExecutor.runAsync(() -> {
+                    messageService.saveMessage(messageId, senderId, receiverId, text, false);
+                    ObjectNode payload = objectMapper.createObjectNode();
+                    payload.put("type", "CHAT");
+                    payload.put("from", senderId);
+                    payload.put("to", receiverId);
+                    payload.put("content", text);
+                    payload.put("timestamp", System.currentTimeMillis());
+                    payload.put("messageId", messageId);
+
+                    LOG.info("Sending message to Kafka with messageId: " + messageId);
+                    kafkaProducer.sendMessage(payload.toString());
+                }).exceptionally(ex -> {
+                    LOG.error("Failed to persist/send chat message with messageId: " + messageId, ex);
+                    return null;
+                });
+                return;
+            }
+            LOG.warn("Unknown message type '" + type + "' from user " + senderId + ": " + message);
         } catch (Exception e) {
             LOG.error("Error occurred while processing message from user " + senderId, e);
         }

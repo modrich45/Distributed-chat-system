@@ -13,4 +13,12 @@ public class MessageRepository implements PanacheRepository<Message> {
     public List<Message> undeliveredMessages(Long receiverId) {
         return find("receiverId = ?1 and delivered = false", receiverId).list();
     }
+
+    public Message findByMessageId(String messageId) {
+        return find("messageId", messageId).firstResult();
+    }
+
+    public long markDeliveredByMessageId(String messageId) {
+        return update("delivered = true where messageId = ?1", messageId);
+    }
 }

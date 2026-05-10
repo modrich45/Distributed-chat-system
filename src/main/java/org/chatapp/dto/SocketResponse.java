@@ -1,6 +1,7 @@
 package org.chatapp.dto;
 
 public class SocketResponse {
+    public String messageId;
     public String type;      
     public Long from;
     public Long to;

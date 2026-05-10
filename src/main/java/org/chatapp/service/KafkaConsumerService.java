@@ -36,6 +36,11 @@ public class KafkaConsumerService {
             // Parse JSON
             var json = mapper.readTree(message);
 
+            if (!json.hasNonNull("to") || !json.hasNonNull("from") || !json.hasNonNull("content")) {
+                LOG.warn("Invalid Kafka payload, missing required fields: " + message);
+                return;
+            }
+
             Long receiverId = json.get("to").asLong();
 
             String targetServer = redisService.getUserServer(receiverId).join();
@@ -53,18 +58,21 @@ public class KafkaConsumerService {
 
             if (session != null && session.isOpen()) {
                 SocketResponse response = new SocketResponse();
+                response.messageId = json.path("messageId").asText(null);
                 response.type = "CHAT";
                 response.from = json.get("from").asLong();
                 response.to = receiverId;
                 response.content = json.get("content").asText();
-                response.timestamp = json.get("timestamp").asLong();
+                response.timestamp = json.path("timestamp").asLong(System.currentTimeMillis());
 
                 LOG.info("Kafka received: " + message);
                 Util.sendMessage(session, response);
+            } else {
+                LOG.warn("No active websocket session for receiverId " + receiverId + " on server " + serverId);
             }
 
         } catch (Exception e) {
-            e.printStackTrace();
+            LOG.error("Failed to consume kafka message: " + message, e);
         }
     }
 }
