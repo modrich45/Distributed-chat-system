@@ -30,7 +30,7 @@ public class RedisService {
 
     public void setUserOnline(Long userId) {
         managedExecutor.runAsync(() -> {
-            commands.setex("user:" + userId, 3600,serverId);
+            commands.setex("user:" + userId, 3600, serverId);
         });
     }
 
@@ -51,5 +51,20 @@ public class RedisService {
         return managedExecutor.supplyAsync(() -> {
             return commands.get("user:" + userId);
         });
+    }
+
+    public CompletableFuture<Boolean> isMessageProcessed(String messageId) {
+        return managedExecutor.supplyAsync(() -> {
+            String result = commands.get("message:" + messageId);
+            return result != null && !result.isBlank();
+        });
+    }
+
+    public void markMessageProcessed(String messageId) {
+
+        commands.setex(
+                "processed:" + messageId,
+                3600,
+                "true");
     }
 }

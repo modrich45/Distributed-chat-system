@@ -65,8 +65,14 @@ public class KafkaConsumerService {
                 response.content = json.get("content").asText();
                 response.timestamp = json.path("timestamp").asLong(System.currentTimeMillis());
 
+                if(redisService.isMessageProcessed(response.messageId).join()) {
+                    LOG.info("Message with messageId " + response.messageId + " has already been processed. Skipping.");
+                    return;
+                }
+
                 LOG.info("Kafka received: " + message);
                 Util.sendMessage(session, response);
+                redisService.markMessageProcessed(response.messageId);
             } else {
                 LOG.warn("No active websocket session for receiverId " + receiverId + " on server " + serverId);
             }
