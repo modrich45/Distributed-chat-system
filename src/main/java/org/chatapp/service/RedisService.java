@@ -55,7 +55,7 @@ public class RedisService {
 
     public CompletableFuture<Boolean> isMessageProcessed(String messageId) {
         return managedExecutor.supplyAsync(() -> {
-            String result = commands.get("message:" + messageId);
+            String result = commands.get("processed:" + messageId);
             return result != null && !result.isBlank();
         });
     }

@@ -2,7 +2,11 @@ package org.chatapp.entity;
 
 import java.time.LocalDateTime;
 
+import org.chatapp.enums.MessageStatus;
+
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 
@@ -21,7 +25,8 @@ public class Message {
 
     private LocalDateTime timestamp;
 
-    private boolean delivered;
+    @Enumerated(EnumType.STRING)
+    private MessageStatus status;
 
     public Long getId() {
         return id;
@@ -59,12 +64,12 @@ public class Message {
         this.timestamp = timestamp;
     }
 
-    public boolean isDelivered() {
-        return delivered;
+    public MessageStatus getStatus() {
+        return status;
     }
 
-    public void setDelivered(boolean delivered) {
-        this.delivered = delivered;
+    public void setStatus(MessageStatus status) {
+        this.status = status;
     }
 
     public String getMessageId() {

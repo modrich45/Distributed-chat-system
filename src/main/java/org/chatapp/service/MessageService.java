@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.chatapp.dto.ChatMessage;
 import org.chatapp.entity.Message;
+import org.chatapp.enums.MessageStatus;
 import org.chatapp.repo.MessageRepository;
 import org.jboss.logging.Logger;
 
@@ -20,14 +21,15 @@ public class MessageService {
     MessageRepository messageRepository;
 
     @Transactional
-    public Message saveMessage(String messageId, Long senderId, Long receiverId, String content, boolean delivered) {
+    public Message saveMessage(String messageId, Long senderId, Long receiverId, String content, MessageStatus status) {
         Message msg = new Message();
+        msg.setStatus(status);
         msg.setMessageId(messageId);
         msg.setSenderId(senderId);
         msg.setReceiverId(receiverId);
         msg.setContent(content);
+        msg.setStatus(status);
         msg.setTimestamp(LocalDateTime.now());
-        msg.setDelivered(delivered);
         messageRepository.persist(msg);
         System.out.println("Message saved to database: " + msg.getContent());
         return msg;
@@ -48,19 +50,20 @@ public class MessageService {
     }
 
     @Transactional
-    public void markAsDelivered(String messageId) {
-        String normalizedMessageId = messageId == null ? null : messageId.trim();
-        if (normalizedMessageId == null || normalizedMessageId.isEmpty()) {
-            LOG.warn("Cannot mark delivered. messageId is null/empty.");
-            return;
-        }
+    public void updateMessageStatus(
+            String messageId,
+            MessageStatus status) {
 
-        long updatedRows = messageRepository.markDeliveredByMessageId(normalizedMessageId);
-        if (updatedRows > 0) {
-            LOG.info("Marked message delivered for messageId: " + messageId);
-        } else {
-            LOG.warn("No message found to mark delivered for messageId: " + messageId);
+        Message msg = messageRepository.findByMessageId(messageId);
+
+        if (msg != null) {
+            msg.setStatus(status);
         }
+    }
+
+    @Transactional
+    public Message find(String messageId) {
+        return messageRepository.findByMessageId(messageId);
     }
 
     public List<Message> getAllMessages() {
