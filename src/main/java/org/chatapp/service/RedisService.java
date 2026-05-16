@@ -67,4 +67,22 @@ public class RedisService {
                 3600,
                 "true");
     }
+
+    public boolean isRateLimited(Long userId){
+        String key="rate:" + userId;
+        String current = commands.get(key);
+        if(current == null){
+            commands.setex(key, 60, "1");
+            return false;
+        } else {
+            int count = Integer.parseInt(current);
+            if(count >= 10){
+                return true;
+            } else {
+                commands.incr(key);
+                return false;
+            }
+        }
+    }
+    
 }

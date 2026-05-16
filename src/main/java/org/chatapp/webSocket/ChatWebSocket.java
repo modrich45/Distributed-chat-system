@@ -133,6 +133,10 @@ public class ChatWebSocket {
                 String messageId = UUID.randomUUID().toString();
                 Long receiverId = jsonNode.get("to").asLong();
                 String text = jsonNode.get("message").asText();
+                if (redisService.isRateLimited(senderId)) {
+                    LOG.warn("CHAT message from user " + senderId + " is rate limited.");
+                    return;
+                }
                 managedExecutor.runAsync(() -> {
                     messageService.saveMessage(messageId, senderId, receiverId, text, MessageStatus.SENT);
                     ObjectNode payload = objectMapper.createObjectNode();
