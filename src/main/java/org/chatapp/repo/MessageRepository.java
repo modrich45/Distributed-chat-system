@@ -3,6 +3,7 @@ package org.chatapp.repo;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import org.chatapp.dto.ChatHistoryResponse;
 import org.chatapp.entity.Message;
 import org.chatapp.enums.MessageStatus;
 
@@ -23,10 +24,18 @@ public class MessageRepository implements PanacheRepository<Message> {
         return update("status = ?1 where messageId = ?2", MessageStatus.DELIVERED, messageId);
     }
 
-    public List<Message> getMessageHistory(Long userId1, Long userId2, LocalDateTime before, int limit) {
-        return find(
+    public List<ChatHistoryResponse> getMessageHistory(Long userId1, Long userId2, LocalDateTime before, int limit) {
+        List<Message> messages = find(
                 "((senderId = ?1 and receiverId = ?2) or (senderId = ?2 and receiverId = ?1)) and timestamp < ?3 order by timestamp desc",
                 userId1, userId2, before).page(0, limit)
                 .list();
+
+        ChatHistoryResponse response = new ChatHistoryResponse();
+        response.messages = messages;
+        response.hasMore = messages.size() == limit;
+        if (!messages.isEmpty()) {
+            response.nextCursor = messages.get(messages.size() - 1).getTimestamp();
+        }
+        return List.of(response);
     }
 }

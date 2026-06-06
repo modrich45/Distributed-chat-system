@@ -3,6 +3,7 @@ package org.chatapp.controller;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import org.chatapp.dto.ChatHistoryResponse;
 import org.chatapp.entity.Message;
 import org.chatapp.service.MessageService;
 
@@ -35,7 +36,7 @@ public class MessageController {
 
     @GET
     @Path("/{user1}/{user2}")
-    public List<Message> getMessages(
+    public List<ChatHistoryResponse> getMessages(
             @PathParam("user1") Long user1,
             @PathParam("user2") Long user2,
 

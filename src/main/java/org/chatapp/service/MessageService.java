@@ -3,6 +3,7 @@ package org.chatapp.service;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import org.chatapp.dto.ChatHistoryResponse;
 import org.chatapp.dto.ChatMessage;
 import org.chatapp.entity.Message;
 import org.chatapp.enums.MessageStatus;
@@ -70,7 +71,7 @@ public class MessageService {
         return messageRepository.listAll();
     }
 
-    public List<Message> getMessageHistory(Long userId1, Long userId2, LocalDateTime before, int limit) {
+    public List<ChatHistoryResponse> getMessageHistory(Long userId1, Long userId2, LocalDateTime before, int limit) {
         return messageRepository.getMessageHistory(userId1, userId2, before, limit);
     }
 }
