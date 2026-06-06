@@ -69,4 +69,8 @@ public class MessageService {
     public List<Message> getAllMessages() {
         return messageRepository.listAll();
     }
+
+    public List<Message> getMessageHistory(Long userId1, Long userId2, LocalDateTime before, int limit) {
+        return messageRepository.getMessageHistory(userId1, userId2, before, limit);
+    }
 }
