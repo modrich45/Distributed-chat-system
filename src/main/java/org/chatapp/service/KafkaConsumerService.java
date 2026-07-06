@@ -27,10 +27,18 @@ public class KafkaConsumerService {
     @Inject
     SessionManager sessionManager;
 
+    @Inject
+    RetryService retryService;
+
+    @Inject
+    Util util;
+
     private static final ObjectMapper mapper = new ObjectMapper();
 
     @Incoming("chat-in")
     public void consume(String message) {
+
+
         try {
             LOG.info("RAW MESSAGE FROM KAFKA: " + message);
             var json = mapper.readTree(message);
@@ -70,7 +78,7 @@ public class KafkaConsumerService {
                     }
 
                     LOG.info("Kafka received CHAT: " + message);
-                    Util.sendMessage(session, response);
+                    util.sendMessage(session, response);
                     if (response.messageId != null) {
                         redisService.markMessageProcessed(response.messageId);
                     }
@@ -104,7 +112,7 @@ public class KafkaConsumerService {
                     payload.put("type", "READ_ACK");
                     payload.put("messageId", json.get("messageId").asText());
                     payload.put("readerId", json.get("readerId").asLong());
-                    Util.sendMessage(session, payload);
+                    util.sendMessage(session, payload);
                     LOG.info("Delivered READ_ACK for messageId " + json.get("messageId").asText() + " to user " + receiverId);
                 } else {
                     LOG.warn("No active websocket session for READ_ACK receiverId " + receiverId + " on server " + serverId);

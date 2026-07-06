@@ -77,10 +77,10 @@ public class ChatWebSocket {
                 response.to = msg.to;
                 response.content = msg.content;
                 response.timestamp = msg.timestamp;
-                Util.sendMessage(session, response);
+                util.sendMessage(session, response);
             });
 
-            Util.sendMessage(session, "You have " + undeliveredMessages.size() + " undelivered messages.");
+            util.sendMessage(session, "You have " + undeliveredMessages.size() + " undelivered messages.");
         });
     }
 
@@ -190,7 +190,7 @@ public class ChatWebSocket {
                     if (serverId.equals(targetServer)) {
                         Session senderSession = sessionManager.getSession(originalSenderId);
                         if (senderSession != null && senderSession.isOpen()) {
-                            Util.sendMessage(senderSession, readAck);
+                            util.sendMessage(senderSession, readAck);
                         } else {
                             LOG.warn("Original sender session missing on server " + serverId + " for messageId: " + messageId);
                         }
